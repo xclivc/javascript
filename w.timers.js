@@ -27,3 +27,14 @@ function workerTimers() {
         }
     };
 }
+
+/* testing
+const timers = workerTimers();
+const setTimeout = (callback, delay) => timers('setTimeout', callback, delay);
+const setInterval = (callback, delay) => timers('setInterval', callback, delay);
+const clearTimeout = (id) => timers('clearTimeout', id);
+const clearInterval = (id) => timers('clearInterval', id);
+
+const id = setInterval(() => console.log('test'), 1000);
+setTimeout(() => clearInterval(id), 10000);
+*/
