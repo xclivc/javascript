@@ -1,6 +1,6 @@
 function workerTimers() {
     var idCounter = Date.now();
-    const script = `self.onmessage = (function (self) { const handles = [setTimeout, clearTimeout, setInterval, clearInterval].reduce((result, fn) => (result[fn.name] = fn, result), {}); const ids = []; return function (event) { const { id = 0, type = '', delay = 0 } = event.data || {}; const handle = handles[type]; if (!handle) return self.postMessage({ id }); if (handle.name.startsWith('set')) { ids[id] = handle(() => self.postMessage({ id, type }), delay || 0); } else { handle(ids[id]); } }; })(self);`;
+    const script = `self.onmessage = (function (self) { const handles = [setTimeout, clearTimeout, setInterval, clearInterval].reduce((result, fn) => (result[fn.name] = fn, result), {}); const ids = []; return function (event) { const { id = 0, type = '', delay = 0 } = event.data || {}; const handle = handles[type]; if (!handle) return self.postMessage({ id }); if (handle.name.startsWith('set')) { ids[id] = handle(() => self.postMessage({ id, type }), delay || 0); } else { if(!ids[id]) return; handle(ids[id]); delete ids[id]; } }; })(self);`;
     const blob = new Blob([script], { type: 'application/javascript' });
     const worker = new Worker(URL.createObjectURL(blob));
     //# const dataUrl = 'data:application/javascript;base64,' + btoa(script);
@@ -40,7 +40,9 @@ self.onmessage = (function (self) {
         if (handle.name.startsWith('set')) {
             ids[id] = handle(() => self.postMessage({ id, type }), delay || 0);
         } else {
+            if(!ids[id]) return;
             handle(ids[id]);
+            delete ids[id];
         }
     };
 })(self);
