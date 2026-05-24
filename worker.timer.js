@@ -30,7 +30,7 @@ function workerTimers() {
             return;
         }
         
-        if (args.length === 2 && typeof args[0] === 'function') {
+        if (args.length == 2 && typeof args[0] == 'function') {
             const id = ++idCounter;
             const callback = args[0];
             const delay = args[1];
@@ -39,7 +39,7 @@ function workerTimers() {
             return id;
         } 
         
-        if (args.length === 1 && typeof args[0] === 'number') {
+        if (args.length == 1 && typeof args[0] == 'number') {
             const id = args[0];
             worker.postMessage({ id, type });
             return;
