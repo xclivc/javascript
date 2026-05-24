@@ -1,32 +1,42 @@
 function workerTimers() {
-    var idCounter = Date.now();
-    const script = `self.onmessage = (function (self) { const handles = [setTimeout, clearTimeout, setInterval, clearInterval].reduce((result, fn) => (result[fn.name] = fn, result), {}); const ids = []; const dettach = true; return function (event) { const { id = 0, type = '', delay = 0 } = event.data || {}; const handle = handles[type]; if (!handle) return self.postMessage({ id }); if (handle.name.startsWith('set')) { ids[id] = handle(() => self.postMessage({ id }), delay || 0); } else { if(!ids[id]) return; handle(ids[id]); delete ids[id]; self.postMessage({ id, dettach }); } }; })(self);`;
+    let idCounter = Date.now();
+    const script = `self.onmessage = (function(self) { const handles = new Map([ ['setTimeout', setTimeout], ['clearTimeout', clearTimeout], ['setInterval', setInterval], ['clearInterval', clearInterval] ]); const ids = new Map(); const detach = true; return function(event) { const { id = 0, type = '', delay = 0 } = event.data || {}; const handle = handles.get(type); if (!handle) return self.postMessage({ id }); if (type.startsWith('set')) { const timerId = handle(() => self.postMessage({ id }), delay || 0); ids.set(id, timerId); } else { if (!ids.has(id)) return; handle(ids.get(id)); ids.delete(id); self.postMessage({ id, detach }); } }; })(self);`;
+    
     const blob = new Blob([script], { type: 'application/javascript' });
     const worker = new Worker(URL.createObjectURL(blob));
-    //# const dataUrl = 'data:application/javascript;base64,' + btoa(script);
-    //# const worker = new Worker(dataUrl);
-    const callbacks = {};
+    
+    const callbacks = new Map();
+    
     worker.onmessage = (e) => {
-        const { id, dettach } = e.data || {};
+        const { id, detach } = e.data || {};
         if (!id) return;
-        if(!dettach) {
-            const callback = callbacks[id];
+        
+        if (!detach) {
+            const callback = callbacks.get(id);
             if (!callback) return;
             callback();
             return;
         }
-        delete callbacks[id];
+        
+        callbacks.delete(id);
     };
-    return function (type, ...args) {
-        if (!type) return worker.terminate();
-        if (args.length == 2 && typeof (args[0]) == 'function') {
+    
+    return function(type, ...args) {
+        if (!type) {
+            worker.terminate();
+            return;
+        }
+        
+        if (args.length === 2 && typeof args[0] === 'function') {
             const id = ++idCounter;
             const callback = args[0];
             const delay = args[1];
-            callbacks[id] = callback;
+            callbacks.set(id, callback);
             worker.postMessage({ id, type, delay });
             return id;
-        } else if (args.length == 1 && typeof (args[0]) == 'number') {
+        } 
+        
+        if (args.length === 1 && typeof args[0] === 'number') {
             const id = args[0];
             worker.postMessage({ id, type });
             return;
@@ -34,21 +44,31 @@ function workerTimers() {
     };
 }
 /* script
-self.onmessage = (function (self) {
-    const handles = [setTimeout, clearTimeout, setInterval, clearInterval].reduce((result, fn) => (result[fn.name] = fn, result), {});
-    const ids = [];
-    const dettach = true;
-    return function (event) {
+self.onmessage = (function(self) {
+    const handles = new Map([
+        ['setTimeout', setTimeout],
+        ['clearTimeout', clearTimeout],
+        ['setInterval', setInterval],
+        ['clearInterval', clearInterval]
+    ]);
+    
+    const ids = new Map();
+    const detach = true;
+    
+    return function(event) {
         const { id = 0, type = '', delay = 0 } = event.data || {};
-        const handle = handles[type];
+        const handle = handles.get(type);
+        
         if (!handle) return self.postMessage({ id });
-        if (handle.name.startsWith('set')) {
-            ids[id] = handle(() => self.postMessage({ id }), delay || 0);
+        
+        if (type.startsWith('set')) {
+            const timerId = handle(() => self.postMessage({ id }), delay || 0);
+            ids.set(id, timerId);
         } else {
-            if(!ids[id]) return;
-            handle(ids[id]);
-            delete ids[id];
-            self.postMessage({ id, dettach });
+            if (!ids.has(id)) return;
+            handle(ids.get(id));
+            ids.delete(id);
+            self.postMessage({ id, detach });
         }
     };
 })(self);
