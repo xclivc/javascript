@@ -1,9 +1,12 @@
 function workerTimers() {
     let idCounter = Date.now();
-    const script = `self.onmessage = (function(self) { const handles = new Map([ ['setTimeout', setTimeout], ['clearTimeout', clearTimeout], ['setInterval', setInterval], ['clearInterval', clearInterval] ]); const ids = new Map(); const detach = true; return function(event) { const { id = 0, type = '', delay = 0 } = event.data || {}; const handle = handles.get(type); if (!handle) return self.postMessage({ id }); if (type.startsWith('set')) { const timerId = handle(() => self.postMessage({ id }), delay || 0); ids.set(id, timerId); } else { if (!ids.has(id)) return; handle(ids.get(id)); ids.delete(id); self.postMessage({ id, detach }); } }; })(self);`;
     
+    const script = `self.onmessage = (function(self) { const handles = new Map([ ['setTimeout', setTimeout], ['clearTimeout', clearTimeout], ['setInterval', setInterval], ['clearInterval', clearInterval] ]); const ids = new Map(); const detach = true; return function(event) { const { id = 0, type = '', delay = 0 } = event.data || {}; const handle = handles.get(type); if (!handle) return self.postMessage({ id }); if (type.startsWith('set')) { const timerId = handle(() => self.postMessage({ id }), delay || 0); ids.set(id, timerId); } else { if (!ids.has(id)) return; handle(ids.get(id)); ids.delete(id); self.postMessage({ id, detach }); } }; })(self);`;
     const blob = new Blob([script], { type: 'application/javascript' });
     const worker = new Worker(URL.createObjectURL(blob));
+    //# const dataUrl = 'data:application/javascript;base64,' + btoa(script);
+    //# const worker = new Worker(dataUrl);
+    //# const worker = new Worker('[URL]');
     
     const callbacks = new Map();
     
